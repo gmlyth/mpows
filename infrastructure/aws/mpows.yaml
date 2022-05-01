@@ -23,6 +23,10 @@ Parameters:
     Type: Number
     Default: 1
 
+  PageLoadHeaders:
+    Type: String
+    Default: 'user-agent,x-forwarded-for'
+
 Conditions:
   CreatePageLoadResources: !Equals [ !Ref CapturePageLoads, true ]
   CreatePageClickResources: !Equals [ !Ref CapturePageClicks, true ]
@@ -32,7 +36,7 @@ Resources:
     Type: 'AWS::S3::Bucket'
     Condition: CreatePageLoadResources 
     Properties:
-      BucketName: !Sub "mpaws-${AWS::AccountId}-${AWS::Region}-page-loads"
+      BucketName: !Sub "mpows-${AWS::AccountId}-${AWS::Region}-page-loads"
       Tags:
         - Key: Vendor
           Value: mpows
@@ -46,7 +50,7 @@ Resources:
     Type: 'AWS::S3::Bucket'
     Condition: CreatePageClickResources
     Properties:
-      BucketName: !Sub "mpaws-${AWS::AccountId}-${AWS::Region}-page-clicks"
+      BucketName: !Sub "mpows-${AWS::AccountId}-${AWS::Region}-page-clicks"
       Tags:
         - Key: Vendor
           Value: mpows
@@ -60,27 +64,27 @@ Resources:
     Type: AWS::Kinesis::Stream
     Condition: CreatePageLoadResources
     Properties: 
-      Name: !Sub "mpaws-${AWS::AccountId}-${AWS::Region}-page-loads-stream"
+      Name: !Sub "mpows-${AWS::AccountId}-${AWS::Region}-page-loads-stream"
       RetentionPeriodHours: 24
       ShardCount: !Ref DataStreamShardsForPageLoads
       Tags: 
         - Key: Vendor
           Value: mpows
         - Key: Name
-          Value: !Sub "mpaws-${AWS::AccountId}-${AWS::Region}-page-loads-stream"
+          Value: !Sub "mpows-${AWS::AccountId}-${AWS::Region}-page-loads-stream"
 
   KinesisDataStreamPageClicks:
     Type: AWS::Kinesis::Stream
     Condition: CreatePageClickResources
     Properties: 
-      Name: !Sub "mpaws-${AWS::AccountId}-${AWS::Region}-page-clicks-stream"
+      Name: !Sub "mpows-${AWS::AccountId}-${AWS::Region}-page-clicks-stream"
       RetentionPeriodHours: 24
       ShardCount: !Ref DataStreamShardsForPageClicks
       Tags: 
         - Key: Vendor
           Value: mpows
         - Key: Name
-          Value: !Sub "mpaws-${AWS::AccountId}-${AWS::Region}-page-clicks-stream"
+          Value: !Sub "mpows-${AWS::AccountId}-${AWS::Region}-page-clicks-stream"
 
   FirehoseDeliveryIAMRole:
     Type: AWS::IAM::Role
@@ -128,7 +132,7 @@ Resources:
     Type: AWS::KinesisFirehose::DeliveryStream
     Condition: CreatePageLoadResources
     Properties: 
-      DeliveryStreamName: !Sub "mpaws-${AWS::AccountId}-${AWS::Region}-page-loads-firehose"
+      DeliveryStreamName: !Sub "mpows-${AWS::AccountId}-${AWS::Region}-page-loads-firehose"
       DeliveryStreamType: KinesisStreamAsSource
       KinesisStreamSourceConfiguration: 
         KinesisStreamARN: !GetAtt KinesisDataStreamPageLoads.Arn
@@ -143,13 +147,13 @@ Resources:
         - Key: Vendor
           Value: mpows
         - Key: Name
-          Value: !Sub "mpaws-${AWS::AccountId}-${AWS::Region}-page-loads-firehose"         
+          Value: !Sub "mpows-${AWS::AccountId}-${AWS::Region}-page-loads-firehose"         
 
   KinesisFirehosePageClicks:
     Type: AWS::KinesisFirehose::DeliveryStream
     Condition: CreatePageClickResources
     Properties: 
-      DeliveryStreamName: !Sub "mpaws-${AWS::AccountId}-${AWS::Region}-page-clicks-firehose"
+      DeliveryStreamName: !Sub "mpows-${AWS::AccountId}-${AWS::Region}-page-clicks-firehose"
       DeliveryStreamType: KinesisStreamAsSource
       KinesisStreamSourceConfiguration: 
         KinesisStreamARN: !GetAtt KinesisDataStreamPageClicks.Arn
@@ -164,4 +168,102 @@ Resources:
         - Key: Vendor
           Value: mpows
         - Key: Name
-          Value: !Sub "mpaws-${AWS::AccountId}-${AWS::Region}-page-clicks-firehose"         
+          Value: !Sub "mpows-${AWS::AccountId}-${AWS::Region}-page-clicks-firehose"
+
+  LambdaFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: ''
+          Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: root
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: "kinesis:*"
+                Resource: "*"    
+              - Effect: Allow
+                Action: "logs:*"
+                Resource: "*"                        
+
+  LambdaFunctionPageLoadsUrl:
+    Type: AWS::Lambda::Url
+    Condition: CreatePageLoadResources    
+    Properties: 
+      AuthType: NONE
+      TargetFunctionArn: !GetAtt LambdaFunctionPageLoads.Arn
+
+  LambdaFunctionPageLoadsPermission:
+    Type: AWS::Lambda::Permission
+    Condition: CreatePageLoadResources    
+    Properties: 
+      Action: lambda:InvokeFunctionUrl 
+      FunctionName: !Ref LambdaFunctionPageLoads
+      FunctionUrlAuthType: NONE
+      Principal: "*"  
+
+  LambdaFunctionPageLoads:
+    Type: AWS::Lambda::Function
+    Condition: CreatePageLoadResources
+    Properties: 
+      FunctionName: !Sub "mpows-${AWS::AccountId}-${AWS::Region}-page-loads-lambda"
+      Role: !GetAtt LambdaFunctionRole.Arn
+      Runtime: python3.9
+      Handler: index.handler
+      Code:
+        ZipFile: !Sub |
+          import json
+          import boto3
+          import datetime
+          kinesis_client = boto3.client('kinesis')
+          def handler(event, context): 
+              print(event)
+              
+              headers_to_record = '${PageLoadHeaders}'
+              headers_to_record_list = headers_to_record.split(',')
+              
+              record = {'request_url': 'UNKNOWN',
+              'timestamp': datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S")}
+              
+              for key_name in headers_to_record_list:
+                record[key_name.replace('-','_')] = 'UNKNOWN'
+
+              if 'queryStringParameters' in event and 'requestUrl' in event['queryStringParameters']:
+                record['request_url'] = event['queryStringParameters']['requestUrl'];
+              for key_name in headers_to_record_list:
+                if 'headers' in event and key_name in event['headers']:
+                  record[key_name.replace('-','_')] = event['headers'][key_name];     
+              
+              print(json.dumps(record));
+              record_massaged = json.dumps(record) + "\n"
+              
+              kinesis_client.put_record(
+              StreamName='${KinesisDataStreamPageLoads}',
+              Data=record_massaged.encode('utf-8'),
+              PartitionKey='string'
+              )
+
+              body = record_massaged
+              return {
+                "statusCode": 200,
+                "statusDescription": "200 OK",
+                "isBase64Encoded": False,
+                "headers": {
+                  "Content-Type": "text/html"
+                },
+                "body": body
+              }
+              
+      Tags:
+          - Key: Vendor
+            Value: mpows
+          - Key: Name
+            Value: !Sub "mpows-${AWS::AccountId}-${AWS::Region}-page-loads-lambda"             
