@@ -236,8 +236,8 @@ Resources:
               for key_name in headers_to_record_list:
                 record[key_name.replace('-','_')] = 'UNKNOWN'
 
-              if 'queryStringParameters' in event and 'requestUrl' in event['queryStringParameters']:
-                record['request_url'] = event['queryStringParameters']['requestUrl'];
+              if 'queryStringParameters' in event and 'request_url' in event['queryStringParameters']:
+                record['request_url'] = event['queryStringParameters']['request_url'];
               for key_name in headers_to_record_list:
                 if 'headers' in event and key_name in event['headers']:
                   record[key_name.replace('-','_')] = event['headers'][key_name];     
