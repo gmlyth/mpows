@@ -3,15 +3,25 @@ Description: Creates resource stack for mpows.
 Parameters:
   CapturePageLoads:
     Type: String
+    Default: true
     AllowedValues:
       - true
       - false
 
   CapturePageClicks:
     Type: String
+    Default: true
     AllowedValues:
       - true
       - false
+    
+  DataStreamShardsForPageLoads:
+    Type: Number
+    Default: 1
+
+  DataStreamShardsForPageClicks:
+    Type: Number
+    Default: 1
 
 Conditions:
   CreatePageLoadResources: !Equals [ !Ref CapturePageLoads, true ]
@@ -45,3 +55,23 @@ Resources:
         BlockPublicPolicy : true
         IgnorePublicAcls : true
         RestrictPublicBuckets : true
+
+  KinesisDataStreamPageLoads:
+    Type: AWS::Kinesis::Stream
+    Properties: 
+      Name: !Sub "mpaws-${AWS::AccountId}-${AWS::Region}-page-loads-stream"
+      RetentionPeriodHours: 24
+      ShardCount: !Ref DataStreamShardsForPageLoads
+      Tags: 
+        - Key: Vendor
+          Value: mpows
+
+  KinesisDataStreamPageClicks:
+    Type: AWS::Kinesis::Stream
+    Properties: 
+      Name: !Sub "mpaws-${AWS::AccountId}-${AWS::Region}-page-clicks-stream"
+      RetentionPeriodHours: 24
+      ShardCount: !Ref DataStreamShardsForPageClicks
+      Tags: 
+        - Key: Vendor
+          Value: mpows
