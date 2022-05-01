@@ -267,3 +267,78 @@ Resources:
             Value: mpows
           - Key: Name
             Value: !Sub "mpows-${AWS::AccountId}-${AWS::Region}-page-loads-lambda"             
+
+  LambdaFunctionPageClicksUrl:
+    Type: AWS::Lambda::Url
+    Condition: CreatePageClickResources    
+    Properties: 
+      AuthType: NONE
+      TargetFunctionArn: !GetAtt LambdaFunctionPageClicks.Arn
+
+  LambdaFunctionPageClicksPermission:
+    Type: AWS::Lambda::Permission
+    Condition: CreatePageClickResources    
+    Properties: 
+      Action: lambda:InvokeFunctionUrl 
+      FunctionName: !Ref LambdaFunctionPageClicks
+      FunctionUrlAuthType: NONE
+      Principal: "*"  
+
+  LambdaFunctionPageClicks:
+    Type: AWS::Lambda::Function
+    Condition: CreatePageClickResources
+    Properties: 
+      FunctionName: !Sub "mpows-${AWS::AccountId}-${AWS::Region}-page-clicks-lambda"
+      Role: !GetAtt LambdaFunctionRole.Arn
+      Runtime: python3.9
+      Handler: index.handler
+      Code:
+        ZipFile: !Sub |
+          import json
+          import boto3
+          import datetime
+          kinesis_client = boto3.client('kinesis')
+          def handler(event, context): 
+              print(event)
+              
+              headers_to_record = 'referer'
+              headers_to_record_list = headers_to_record.split(',')
+              
+              record = {'referer': 'UNKNOWN',
+              'timestamp': datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S")}
+              
+              for key_name in headers_to_record_list:
+                record[key_name.replace('-','_')] = 'UNKNOWN'
+
+              if 'queryStringParameters' in event:
+                for key_name in event['queryStringParameters'].keys():
+                  record[key_name] = event['queryStringParameters'][key_name];
+              for key_name in headers_to_record_list:
+                if 'headers' in event and key_name in event['headers']:
+                  record[key_name.replace('-','_')] = event['headers'][key_name];     
+              
+              print(json.dumps(record));
+              record_massaged = json.dumps(record) + "\n"
+              
+              kinesis_client.put_record(
+              StreamName='${KinesisDataStreamPageClicks}',
+              Data=record_massaged.encode('utf-8'),
+              PartitionKey='string'
+              )
+
+              body = record_massaged
+              return {
+                "statusCode": 200,
+                "statusDescription": "200 OK",
+                "isBase64Encoded": False,
+                "headers": {
+                  "Content-Type": "text/html"
+                },
+                "body": body
+              }
+              
+      Tags:
+          - Key: Vendor
+            Value: mpows
+          - Key: Name
+            Value: !Sub "mpows-${AWS::AccountId}-${AWS::Region}-page-clicks-lambda"             
