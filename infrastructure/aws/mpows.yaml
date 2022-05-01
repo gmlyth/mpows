@@ -1,0 +1,28 @@
+Description: Creates resource stack for mpows.
+
+Resources:
+  S3BucketPageLoads:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: !Sub "mpaws-${AWS::AccountId}-${AWS::Region}-page-loads"
+      Tags:
+        - Key: Vendor
+          Value: mpows
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls : true
+        BlockPublicPolicy : true
+        IgnorePublicAcls : true
+        RestrictPublicBuckets : true
+
+  S3BucketPageClicks:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: !Sub "mpaws-${AWS::AccountId}-${AWS::Region}-page-clicks"
+      Tags:
+        - Key: Vendor
+          Value: mpows
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls : true
+        BlockPublicPolicy : true
+        IgnorePublicAcls : true
+        RestrictPublicBuckets : true
