@@ -3,12 +3,14 @@ Metric Pipeline for Online Web Services.
 
 Simple creation of pipeline to capture page loads and clicks. Include and configure a simple javascript file to use.
 
+Parameters are used during stack creation and, along with configuring the javascript file, allow you to create bespoke mpows pipelines.
+
 Usage for AWS:
 
 1. Import mpows.yaml into CloudFormation as a new stack. Configure your deployment of mpows by making choices on the Parameters screen of the stack creation.
 2. Include mpows.js on any web page you want to capture metrics for.
 
-If you choose to launch a demo environment, a small website will be launched which will include further instructions, including how to configure DataBricks for AWS to run the included DataBricks workbooks. Of course, if you don't need a demo environment, you can simply read the included source of the Elastic Beanstalk site.
+If you choose to launch a demo environment, a small website will be launched which will include further instructions, including how to configure DataBricks for AWS to run the included DataBricks workbooks. Of course, if you don't need a demo environment, you can simply read the included source of the site.
 
 Considerations:
 

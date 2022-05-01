@@ -58,6 +58,7 @@ Resources:
 
   KinesisDataStreamPageLoads:
     Type: AWS::Kinesis::Stream
+    Condition: CreatePageLoadResources
     Properties: 
       Name: !Sub "mpaws-${AWS::AccountId}-${AWS::Region}-page-loads-stream"
       RetentionPeriodHours: 24
@@ -65,9 +66,12 @@ Resources:
       Tags: 
         - Key: Vendor
           Value: mpows
+        - Key: Name
+          Value: !Sub "mpaws-${AWS::AccountId}-${AWS::Region}-page-loads-stream"
 
   KinesisDataStreamPageClicks:
     Type: AWS::Kinesis::Stream
+    Condition: CreatePageClickResources
     Properties: 
       Name: !Sub "mpaws-${AWS::AccountId}-${AWS::Region}-page-clicks-stream"
       RetentionPeriodHours: 24
@@ -75,3 +79,89 @@ Resources:
       Tags: 
         - Key: Vendor
           Value: mpows
+        - Key: Name
+          Value: !Sub "mpaws-${AWS::AccountId}-${AWS::Region}-page-clicks-stream"
+
+  FirehoseDeliveryIAMRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: ''
+          Effect: Allow
+          Principal:
+            Service: firehose.amazonaws.com
+          Action: sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: root
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: "s3:*"
+                Resource: "*"
+
+  KinesisSourceIAMRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: ''
+          Effect: Allow
+          Principal:
+            Service: firehose.amazonaws.com
+          Action: sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: root
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: "kinesis:*"
+                Resource: "*"            
+
+  KinesisFirehosePageLoads:
+    Type: AWS::KinesisFirehose::DeliveryStream
+    Condition: CreatePageLoadResources
+    Properties: 
+      DeliveryStreamName: !Sub "mpaws-${AWS::AccountId}-${AWS::Region}-page-loads-firehose"
+      DeliveryStreamType: KinesisStreamAsSource
+      KinesisStreamSourceConfiguration: 
+        KinesisStreamARN: !GetAtt KinesisDataStreamPageLoads.Arn
+        RoleARN: !GetAtt KinesisSourceIAMRole.Arn
+      S3DestinationConfiguration: 
+        BucketARN: !GetAtt S3BucketPageLoads.Arn
+        RoleARN: !GetAtt FirehoseDeliveryIAMRole.Arn
+        BufferingHints:
+          IntervalInSeconds: 300
+          SizeInMBs: 5
+      Tags: 
+        - Key: Vendor
+          Value: mpows
+        - Key: Name
+          Value: !Sub "mpaws-${AWS::AccountId}-${AWS::Region}-page-loads-firehose"         
+
+  KinesisFirehosePageClicks:
+    Type: AWS::KinesisFirehose::DeliveryStream
+    Condition: CreatePageClickResources
+    Properties: 
+      DeliveryStreamName: !Sub "mpaws-${AWS::AccountId}-${AWS::Region}-page-clicks-firehose"
+      DeliveryStreamType: KinesisStreamAsSource
+      KinesisStreamSourceConfiguration: 
+        KinesisStreamARN: !GetAtt KinesisDataStreamPageClicks.Arn
+        RoleARN: !GetAtt KinesisSourceIAMRole.Arn
+      S3DestinationConfiguration: 
+        BucketARN: !GetAtt S3BucketPageClicks.Arn
+        RoleARN: !GetAtt FirehoseDeliveryIAMRole.Arn
+        BufferingHints:
+          IntervalInSeconds: 300
+          SizeInMBs: 5
+      Tags: 
+        - Key: Vendor
+          Value: mpows
+        - Key: Name
+          Value: !Sub "mpaws-${AWS::AccountId}-${AWS::Region}-page-clicks-firehose"         
