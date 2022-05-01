@@ -1,8 +1,26 @@
 Description: Creates resource stack for mpows.
 
+Parameters:
+  CapturePageLoads:
+    Type: String
+    AllowedValues:
+      - true
+      - false
+
+  CapturePageClicks:
+    Type: String
+    AllowedValues:
+      - true
+      - false
+
+Conditions:
+  CreatePageLoadResources: !Equals [ !Ref CapturePageLoads, true ]
+  CreatePageClickResources: !Equals [ !Ref CapturePageClicks, true ]
+
 Resources:
   S3BucketPageLoads:
     Type: 'AWS::S3::Bucket'
+    Condition: CreatePageLoadResources 
     Properties:
       BucketName: !Sub "mpaws-${AWS::AccountId}-${AWS::Region}-page-loads"
       Tags:
@@ -16,6 +34,7 @@ Resources:
 
   S3BucketPageClicks:
     Type: 'AWS::S3::Bucket'
+    Condition: CreatePageClickResources
     Properties:
       BucketName: !Sub "mpaws-${AWS::AccountId}-${AWS::Region}-page-clicks"
       Tags:
