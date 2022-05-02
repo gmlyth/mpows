@@ -3,13 +3,28 @@ Description: Creates resource stack for mpows.
 Parameters:
   CapturePageLoads:
     Type: String
+    Description: Do you want to capture page load events?
     Default: true
     AllowedValues:
       - true
       - false
 
+  PageLoadHeaders:
+    Description: Provide a comma-delimited list of headers to capture from the request.
+    Type: String
+    Default: 'user-agent,x-forwarded-for'
+
   CapturePageClicks:
     Type: String
+    Description: Do you want to capture page click events?
+    Default: true
+    AllowedValues:
+      - true
+      - false
+
+  LogMetricsToS3:
+    Type: String
+    Description: Log metrics to S3 as JSON by way of Kinesis Data Stream and Firehose?
     Default: true
     AllowedValues:
       - true
@@ -23,18 +38,23 @@ Parameters:
     Type: Number
     Default: 1
 
-  PageLoadHeaders:
-    Type: String
-    Default: 'user-agent,x-forwarded-for'
-
 Conditions:
   CreatePageLoadResources: !Equals [ !Ref CapturePageLoads, true ]
   CreatePageClickResources: !Equals [ !Ref CapturePageClicks, true ]
+  CreateS3Resources: !Equals [ !Ref LogMetricsToS3, true ]
+
+  CreatePageLoadS3: !And
+    - !Condition CreatePageLoadResources
+    - !Condition CreateS3Resources
+
+  CreatePageClickS3: !And
+    - !Condition CreatePageClickResources
+    - !Condition CreateS3Resources    
 
 Resources:
   S3BucketPageLoads:
     Type: 'AWS::S3::Bucket'
-    Condition: CreatePageLoadResources 
+    Condition: CreatePageLoadS3 
     Properties:
       BucketName: !Sub "mpows-${AWS::AccountId}-${AWS::Region}-page-loads"
       Tags:
@@ -48,7 +68,7 @@ Resources:
 
   S3BucketPageClicks:
     Type: 'AWS::S3::Bucket'
-    Condition: CreatePageClickResources
+    Condition: CreatePageClickS3
     Properties:
       BucketName: !Sub "mpows-${AWS::AccountId}-${AWS::Region}-page-clicks"
       Tags:
@@ -62,7 +82,7 @@ Resources:
 
   KinesisDataStreamPageLoads:
     Type: AWS::Kinesis::Stream
-    Condition: CreatePageLoadResources
+    Condition: CreatePageLoadS3
     Properties: 
       Name: !Sub "mpows-${AWS::AccountId}-${AWS::Region}-page-loads-stream"
       RetentionPeriodHours: 24
@@ -75,7 +95,7 @@ Resources:
 
   KinesisDataStreamPageClicks:
     Type: AWS::Kinesis::Stream
-    Condition: CreatePageClickResources
+    Condition: CreatePageClickS3
     Properties: 
       Name: !Sub "mpows-${AWS::AccountId}-${AWS::Region}-page-clicks-stream"
       RetentionPeriodHours: 24
@@ -130,7 +150,7 @@ Resources:
 
   KinesisFirehosePageLoads:
     Type: AWS::KinesisFirehose::DeliveryStream
-    Condition: CreatePageLoadResources
+    Condition: CreatePageLoadS3
     Properties: 
       DeliveryStreamName: !Sub "mpows-${AWS::AccountId}-${AWS::Region}-page-loads-firehose"
       DeliveryStreamType: KinesisStreamAsSource
@@ -151,7 +171,7 @@ Resources:
 
   KinesisFirehosePageClicks:
     Type: AWS::KinesisFirehose::DeliveryStream
-    Condition: CreatePageClickResources
+    Condition: CreatePageClickS3
     Properties: 
       DeliveryStreamName: !Sub "mpows-${AWS::AccountId}-${AWS::Region}-page-clicks-firehose"
       DeliveryStreamType: KinesisStreamAsSource
@@ -196,14 +216,14 @@ Resources:
 
   LambdaFunctionPageLoadsUrl:
     Type: AWS::Lambda::Url
-    Condition: CreatePageLoadResources    
+    Condition: CreatePageLoadS3    
     Properties: 
       AuthType: NONE
       TargetFunctionArn: !GetAtt LambdaFunctionPageLoads.Arn
 
   LambdaFunctionPageLoadsPermission:
     Type: AWS::Lambda::Permission
-    Condition: CreatePageLoadResources    
+    Condition: CreatePageLoadS3    
     Properties: 
       Action: lambda:InvokeFunctionUrl 
       FunctionName: !Ref LambdaFunctionPageLoads
@@ -212,7 +232,7 @@ Resources:
 
   LambdaFunctionPageLoads:
     Type: AWS::Lambda::Function
-    Condition: CreatePageLoadResources
+    Condition: CreatePageLoadS3
     Properties: 
       FunctionName: !Sub "mpows-${AWS::AccountId}-${AWS::Region}-page-loads-lambda"
       Role: !GetAtt LambdaFunctionRole.Arn
@@ -270,14 +290,14 @@ Resources:
 
   LambdaFunctionPageClicksUrl:
     Type: AWS::Lambda::Url
-    Condition: CreatePageClickResources    
+    Condition: CreatePageClickS3    
     Properties: 
       AuthType: NONE
       TargetFunctionArn: !GetAtt LambdaFunctionPageClicks.Arn
 
   LambdaFunctionPageClicksPermission:
     Type: AWS::Lambda::Permission
-    Condition: CreatePageClickResources    
+    Condition: CreatePageClickS3    
     Properties: 
       Action: lambda:InvokeFunctionUrl 
       FunctionName: !Ref LambdaFunctionPageClicks
@@ -286,7 +306,7 @@ Resources:
 
   LambdaFunctionPageClicks:
     Type: AWS::Lambda::Function
-    Condition: CreatePageClickResources
+    Condition: CreatePageClickS3
     Properties: 
       FunctionName: !Sub "mpows-${AWS::AccountId}-${AWS::Region}-page-clicks-lambda"
       Role: !GetAtt LambdaFunctionRole.Arn
@@ -342,3 +362,19 @@ Resources:
             Value: mpows
           - Key: Name
             Value: !Sub "mpows-${AWS::AccountId}-${AWS::Region}-page-clicks-lambda"             
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Metric Configuration"
+        Parameters:
+          - CapturePageLoads
+          - CapturePageClicks
+          - PageLoadHeaders
+      - Label:
+          default: "S3 Configuration"
+        Parameters:
+          - LogMetricsToS3
+          - DataStreamShardsForPageLoads
+          - DataStreamShardsForPageClicks         
