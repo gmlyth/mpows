@@ -5,6 +5,8 @@ Simple creation of pipeline to capture page loads and clicks. Include and config
 
 Parameters are used during stack creation and, along with configuring the javascript file, allow you to create bespoke mpows pipelines.
 
+Lambda functions are written in Python 3.9 runtime.
+
 Usage for AWS:
 
 1. Import mpows.yaml into CloudFormation as a new stack. Configure your deployment of mpows by making choices on the Parameters screen of the stack creation.
