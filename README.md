@@ -14,11 +14,11 @@ Usage for AWS:
 
 Key configuration options:
 
-*Choose whether you want to capture page load events, link click events, or both.
-*Choose which request headers you want to capture (if any) for either event.
-*Choose whether you want to log data to S3. If you do so, it will be done using a Kinesis Data Stream / Kinesis Firehose pipeline, and will be stored as JSON with a single record per row. From here, you can analyze it with Athena or load it into Redshift, Databricks, or another datawarehouse / datalake solution.
-*Choose whether you want to log data to DynamoDB. This is the simplest method to be able to just view a history of requests on a webpage.
-*Choose whether you want to launch a demo environment.
+* Choose whether you want to capture page load events, link click events, or both.
+* Choose which request headers you want to capture (if any) for either event.
+* Choose whether you want to log data to S3. If you do so, it will be done using a Kinesis Data Stream / Kinesis Firehose pipeline, and will be stored as JSON with a single record per row. From here, you can analyze it with Athena or load it into Redshift, Databricks, or another datawarehouse / datalake solution.
+* Choose whether you want to log data to DynamoDB. This is the simplest method to be able to just view a history of requests on a webpage.
+* Choose whether you want to launch a demo environment.
 
 If you choose to launch a demo environment, a small Elastic Beanstalk website will be launched which will include further instructions, including how to configure DataBricks for AWS to run the included DataBricks workbooks. Of course, if you don't need a demo environment, you can simply read the included source of the site.
 
