@@ -342,7 +342,10 @@ Resources:
               print(event)
               
               headers_to_record = '${PageLoadHeaders}'
-              headers_to_record_list = headers_to_record.split(',')
+              headers_to_record_list = {}
+              
+              if headers_to_record != '':
+                headers_to_record_list = headers_to_record.split(',')
               
               record = {'request_url': 'UNKNOWN',
               'timestamp': datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S")}
@@ -457,7 +460,10 @@ Resources:
               print(event)
               
               headers_to_record = ''
-              headers_to_record_list = headers_to_record.split(',')
+              headers_to_record_list = {}
+              
+              if headers_to_record != '':
+                headers_to_record_list = headers_to_record.split(',')
               
               record = {'request_url': 'UNKNOWN',
               'timestamp': datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S")}
