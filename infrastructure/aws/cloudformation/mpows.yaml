@@ -335,7 +335,7 @@ Resources:
           import boto3
           import datetime
           kinesis_client = boto3.client('kinesis')
-          dynamodb_client = boto3.client('dynamodb')
+          dynamodb_client = boto3.resource('dynamodb')
           log_to_s3 = True
           log_to_dynamodb = True          
           def handler(event, context): 
@@ -350,11 +350,12 @@ Resources:
               for key_name in headers_to_record_list:
                 record[key_name.replace('-','_')] = 'UNKNOWN'
 
-              if 'queryStringParameters' in event and 'request_url' in event['queryStringParameters']:
-                record['request_url'] = event['queryStringParameters']['request_url'];
+              if 'queryStringParameters' in event:
+                for key_name in event['queryStringParameters'].keys():
+                  record[key_name] = event['queryStringParameters'][key_name];
               for key_name in headers_to_record_list:
                 if 'headers' in event and key_name in event['headers']:
-                  record[key_name.replace('-','_')] = event['headers'][key_name];     
+                  record[key_name.replace('-','_')] = event['headers'][key_name];      
               
               print(json.dumps(record));
               record_massaged = json.dumps(record) + "\n"
@@ -367,7 +368,7 @@ Resources:
                 )
               
               if log_to_dynamodb:
-                table = dynamodb.Table('${PageLoadsDynamoDBTable}')
+                table = dynamodb_client.Table('${PageLoadsDynamoDBTable}')
                 response = table.put_item(Item=record)
 
               body = record_massaged
@@ -409,6 +410,9 @@ Resources:
                 Resource: "*"    
               - Effect: Allow
                 Action: "logs:*"
+                Resource: "*"     
+              - Effect: Allow
+                Action: "dynamodb:*"
                 Resource: "*"  
       Tags:
           - Key: Vendor
@@ -446,16 +450,16 @@ Resources:
           import boto3
           import datetime
           kinesis_client = boto3.client('kinesis')
-          dynamodb_client = boto3.client('dynamodb')
+          dynamodb_client = boto3.resource('dynamodb')
           log_to_s3 = True
           log_to_dynamodb = True
           def handler(event, context): 
               print(event)
               
-              headers_to_record = 'referer'
+              headers_to_record = ''
               headers_to_record_list = headers_to_record.split(',')
               
-              record = {'referer': 'UNKNOWN',
+              record = {'request_url': 'UNKNOWN',
               'timestamp': datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S")}
               
               for key_name in headers_to_record_list:
@@ -478,6 +482,9 @@ Resources:
                 PartitionKey='string'
                 )
               
+              if log_to_dynamodb:
+                table = dynamodb_client.Table('${PageClicksDynamoDBTable}')
+                response = table.put_item(Item=record)              
 
               body = record_massaged
               return {
