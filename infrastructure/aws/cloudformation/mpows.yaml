@@ -38,10 +38,19 @@ Parameters:
     Type: Number
     Default: 1
 
+  LogMetricsToDynamoDB:
+    Type: String
+    Description: Log metrics to DynamoDB Tables?
+    Default: true
+    AllowedValues:
+      - true
+      - false    
+
 Conditions:
   CreatePageLoadResources: !Equals [ !Ref CapturePageLoads, true ]
   CreatePageClickResources: !Equals [ !Ref CapturePageClicks, true ]
   CreateS3Resources: !Equals [ !Ref LogMetricsToS3, true ]
+  CreateDynamoDBResources: !Equals [ !Ref LogMetricsToDynamoDB, true ]
 
   CreatePageLoadS3: !And
     - !Condition CreatePageLoadResources
@@ -50,6 +59,14 @@ Conditions:
   CreatePageClickS3: !And
     - !Condition CreatePageClickResources
     - !Condition CreateS3Resources    
+
+  CreatePageLoadsDynamoDB: !And
+    - !Condition CreatePageLoadResources
+    - !Condition CreateDynamoDBResources
+
+  CreatePageClicksDynamoDB: !And
+    - !Condition CreatePageClickResources
+    - !Condition CreateDynamoDBResources       
 
 Resources:
   S3BucketPageLoads:
@@ -106,8 +123,9 @@ Resources:
         - Key: Name
           Value: !Sub "mpows-${AWS::AccountId}-${AWS::Region}-page-clicks-stream"
 
-  FirehoseDeliveryIAMRole:
+  FirehoseDeliveryPageLoadsIAMRole:
     Type: AWS::IAM::Role
+    Condition: CreatePageLoadS3   
     Properties:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
@@ -117,6 +135,11 @@ Resources:
           Principal:
             Service: firehose.amazonaws.com
           Action: sts:AssumeRole
+      Tags:
+        - Key: Vendor
+          Value: mpows
+        - Key: Name
+          Value: !Sub "mpows-${AWS::AccountId}-${AWS::Region}-page-loads-firehose-role"           
       Path: /
       Policies:
         - PolicyName: root
@@ -125,10 +148,11 @@ Resources:
             Statement:
               - Effect: Allow
                 Action: "s3:*"
-                Resource: "*"
+                Resource: "*"               
 
-  KinesisSourceIAMRole:
+  KinesisSourcePageLoadsIAMRole:
     Type: AWS::IAM::Role
+    Condition: CreatePageLoadS3    
     Properties:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
@@ -138,6 +162,11 @@ Resources:
           Principal:
             Service: firehose.amazonaws.com
           Action: sts:AssumeRole
+      Tags:
+        - Key: Vendor
+          Value: mpows
+        - Key: Name
+          Value: !Sub "mpows-${AWS::AccountId}-${AWS::Region}-page-loads-kinesis-role"            
       Path: /
       Policies:
         - PolicyName: root
@@ -146,7 +175,7 @@ Resources:
             Statement:
               - Effect: Allow
                 Action: "kinesis:*"
-                Resource: "*"            
+                Resource: "*"                           
 
   KinesisFirehosePageLoads:
     Type: AWS::KinesisFirehose::DeliveryStream
@@ -156,10 +185,10 @@ Resources:
       DeliveryStreamType: KinesisStreamAsSource
       KinesisStreamSourceConfiguration: 
         KinesisStreamARN: !GetAtt KinesisDataStreamPageLoads.Arn
-        RoleARN: !GetAtt KinesisSourceIAMRole.Arn
+        RoleARN: !GetAtt KinesisSourcePageLoadsIAMRole.Arn
       S3DestinationConfiguration: 
         BucketARN: !GetAtt S3BucketPageLoads.Arn
-        RoleARN: !GetAtt FirehoseDeliveryIAMRole.Arn
+        RoleARN: !GetAtt FirehoseDeliveryPageLoadsIAMRole.Arn
         BufferingHints:
           IntervalInSeconds: 300
           SizeInMBs: 5
@@ -169,6 +198,60 @@ Resources:
         - Key: Name
           Value: !Sub "mpows-${AWS::AccountId}-${AWS::Region}-page-loads-firehose"         
 
+  FirehoseDeliveryPageClicksIAMRole:
+    Type: AWS::IAM::Role
+    Condition: CreatePageClickS3   
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: ''
+          Effect: Allow
+          Principal:
+            Service: firehose.amazonaws.com
+          Action: sts:AssumeRole
+      Tags:
+        - Key: Vendor
+          Value: mpows
+        - Key: Name
+          Value: !Sub "mpows-${AWS::AccountId}-${AWS::Region}-page-clicks-firehose-role"           
+      Path: /
+      Policies:
+        - PolicyName: root
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: "s3:*"
+                Resource: "*"               
+
+  KinesisSourcePageClicksIAMRole:
+    Type: AWS::IAM::Role
+    Condition: CreatePageClickS3    
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: ''
+          Effect: Allow
+          Principal:
+            Service: firehose.amazonaws.com
+          Action: sts:AssumeRole
+      Tags:
+        - Key: Vendor
+          Value: mpows
+        - Key: Name
+          Value: !Sub "mpows-${AWS::AccountId}-${AWS::Region}-page-clicks-kinesis-role"            
+      Path: /
+      Policies:
+        - PolicyName: root
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: "kinesis:*"
+                Resource: "*"  
+
   KinesisFirehosePageClicks:
     Type: AWS::KinesisFirehose::DeliveryStream
     Condition: CreatePageClickS3
@@ -177,10 +260,10 @@ Resources:
       DeliveryStreamType: KinesisStreamAsSource
       KinesisStreamSourceConfiguration: 
         KinesisStreamARN: !GetAtt KinesisDataStreamPageClicks.Arn
-        RoleARN: !GetAtt KinesisSourceIAMRole.Arn
+        RoleARN: !GetAtt KinesisSourcePageClicksIAMRole.Arn
       S3DestinationConfiguration: 
         BucketARN: !GetAtt S3BucketPageClicks.Arn
-        RoleARN: !GetAtt FirehoseDeliveryIAMRole.Arn
+        RoleARN: !GetAtt FirehoseDeliveryPageClicksIAMRole.Arn
         BufferingHints:
           IntervalInSeconds: 300
           SizeInMBs: 5
@@ -190,7 +273,7 @@ Resources:
         - Key: Name
           Value: !Sub "mpows-${AWS::AccountId}-${AWS::Region}-page-clicks-firehose"
 
-  LambdaFunctionRole:
+  LambdaFunctionPageLoadsRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -212,18 +295,26 @@ Resources:
                 Resource: "*"    
               - Effect: Allow
                 Action: "logs:*"
-                Resource: "*"                        
+                Resource: "*"   
+              - Effect: Allow
+                Action: "dynamodb:*"
+                Resource: "*"  
+      Tags:
+          - Key: Vendor
+            Value: mpows
+          - Key: Name
+            Value: !Sub "mpows-${AWS::AccountId}-${AWS::Region}-page-loads-lambda-role"                                       
 
   LambdaFunctionPageLoadsUrl:
     Type: AWS::Lambda::Url
-    Condition: CreatePageLoadS3    
+    Condition: CreatePageLoadResources    
     Properties: 
       AuthType: NONE
       TargetFunctionArn: !GetAtt LambdaFunctionPageLoads.Arn
 
   LambdaFunctionPageLoadsPermission:
     Type: AWS::Lambda::Permission
-    Condition: CreatePageLoadS3    
+    Condition: CreatePageLoadResources    
     Properties: 
       Action: lambda:InvokeFunctionUrl 
       FunctionName: !Ref LambdaFunctionPageLoads
@@ -232,10 +323,10 @@ Resources:
 
   LambdaFunctionPageLoads:
     Type: AWS::Lambda::Function
-    Condition: CreatePageLoadS3
+    Condition: CreatePageLoadResources
     Properties: 
       FunctionName: !Sub "mpows-${AWS::AccountId}-${AWS::Region}-page-loads-lambda"
-      Role: !GetAtt LambdaFunctionRole.Arn
+      Role: !GetAtt LambdaFunctionPageLoadsRole.Arn
       Runtime: python3.9
       Handler: index.handler
       Code:
@@ -244,6 +335,9 @@ Resources:
           import boto3
           import datetime
           kinesis_client = boto3.client('kinesis')
+          dynamodb_client = boto3.client('dynamodb')
+          log_to_s3 = True
+          log_to_dynamodb = True          
           def handler(event, context): 
               print(event)
               
@@ -265,11 +359,16 @@ Resources:
               print(json.dumps(record));
               record_massaged = json.dumps(record) + "\n"
               
-              kinesis_client.put_record(
-              StreamName='${KinesisDataStreamPageLoads}',
-              Data=record_massaged.encode('utf-8'),
-              PartitionKey='string'
-              )
+              if log_to_s3:              
+                kinesis_client.put_record(
+                StreamName='${KinesisDataStreamPageLoads}',
+                Data=record_massaged.encode('utf-8'),
+                PartitionKey='string'
+                )
+              
+              if log_to_dynamodb:
+                table = dynamodb.Table('${PageLoadsDynamoDBTable}')
+                response = table.put_item(Item=record)
 
               body = record_massaged
               return {
@@ -288,16 +387,45 @@ Resources:
           - Key: Name
             Value: !Sub "mpows-${AWS::AccountId}-${AWS::Region}-page-loads-lambda"             
 
+  LambdaFunctionPageClicksRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: ''
+          Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: root
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: "kinesis:*"
+                Resource: "*"    
+              - Effect: Allow
+                Action: "logs:*"
+                Resource: "*"  
+      Tags:
+          - Key: Vendor
+            Value: mpows
+          - Key: Name
+            Value: !Sub "mpows-${AWS::AccountId}-${AWS::Region}-page-clicks-lambda-role"                 
+
   LambdaFunctionPageClicksUrl:
     Type: AWS::Lambda::Url
-    Condition: CreatePageClickS3    
+    Condition: CreatePageClickResources    
     Properties: 
       AuthType: NONE
       TargetFunctionArn: !GetAtt LambdaFunctionPageClicks.Arn
 
   LambdaFunctionPageClicksPermission:
     Type: AWS::Lambda::Permission
-    Condition: CreatePageClickS3    
+    Condition: CreatePageClickResources    
     Properties: 
       Action: lambda:InvokeFunctionUrl 
       FunctionName: !Ref LambdaFunctionPageClicks
@@ -306,10 +434,10 @@ Resources:
 
   LambdaFunctionPageClicks:
     Type: AWS::Lambda::Function
-    Condition: CreatePageClickS3
+    Condition: CreatePageClickResources
     Properties: 
       FunctionName: !Sub "mpows-${AWS::AccountId}-${AWS::Region}-page-clicks-lambda"
-      Role: !GetAtt LambdaFunctionRole.Arn
+      Role: !GetAtt LambdaFunctionPageClicksRole.Arn
       Runtime: python3.9
       Handler: index.handler
       Code:
@@ -318,6 +446,9 @@ Resources:
           import boto3
           import datetime
           kinesis_client = boto3.client('kinesis')
+          dynamodb_client = boto3.client('dynamodb')
+          log_to_s3 = True
+          log_to_dynamodb = True
           def handler(event, context): 
               print(event)
               
@@ -340,11 +471,13 @@ Resources:
               print(json.dumps(record));
               record_massaged = json.dumps(record) + "\n"
               
-              kinesis_client.put_record(
-              StreamName='${KinesisDataStreamPageClicks}',
-              Data=record_massaged.encode('utf-8'),
-              PartitionKey='string'
-              )
+              if log_to_s3:
+                kinesis_client.put_record(
+                StreamName='${KinesisDataStreamPageClicks}',
+                Data=record_massaged.encode('utf-8'),
+                PartitionKey='string'
+                )
+              
 
               body = record_massaged
               return {
@@ -363,6 +496,50 @@ Resources:
           - Key: Name
             Value: !Sub "mpows-${AWS::AccountId}-${AWS::Region}-page-clicks-lambda"             
 
+  PageLoadsDynamoDBTable: 
+    Type: AWS::DynamoDB::Table
+    Condition: CreatePageLoadsDynamoDB
+    Properties: 
+      BillingMode: PAY_PER_REQUEST
+      TableName: !Sub "mpows-${AWS::AccountId}-${AWS::Region}-page-loads-dynamodb"   
+      AttributeDefinitions: 
+        - AttributeName: request_url
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: S
+      KeySchema: 
+        - AttributeName: request_url
+          KeyType: HASH
+        - AttributeName: timestamp
+          KeyType: RANGE           
+      Tags:
+          - Key: Vendor
+            Value: mpows
+          - Key: Name
+            Value: !Sub "mpows-${AWS::AccountId}-${AWS::Region}-page-loads-dynamodb"               
+
+  PageClicksDynamoDBTable: 
+    Type: AWS::DynamoDB::Table
+    Condition: CreatePageClicksDynamoDB
+    Properties: 
+      BillingMode: PAY_PER_REQUEST
+      TableName: !Sub "mpows-${AWS::AccountId}-${AWS::Region}-page-clicks-dynamodb"   
+      AttributeDefinitions: 
+        - AttributeName: request_url
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: S
+      KeySchema: 
+        - AttributeName: request_url
+          KeyType: HASH
+        - AttributeName: timestamp
+          KeyType: RANGE           
+      Tags:
+          - Key: Vendor
+            Value: mpows
+          - Key: Name
+            Value: !Sub "mpows-${AWS::AccountId}-${AWS::Region}-page-clicks-dynamodb"  
+
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -377,4 +554,4 @@ Metadata:
         Parameters:
           - LogMetricsToS3
           - DataStreamShardsForPageLoads
-          - DataStreamShardsForPageClicks         
+          - DataStreamShardsForPageClicks              
