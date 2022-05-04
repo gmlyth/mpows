@@ -292,12 +292,14 @@ Resources:
             Statement:
               - Effect: Allow
                 Action: "kinesis:*"
+                #arnrewrite
                 Resource: !GetAtt KinesisDataStreamPageLoads.Arn     
               - Effect: Allow
                 Action: "logs:*"
                 Resource: "*"   
               - Effect: Allow
                 Action: "dynamodb:*"
+                #arnrewrite
                 Resource: !GetAtt PageLoadsDynamoDBTable.Arn  
       Tags:
           - Key: Vendor
@@ -410,12 +412,14 @@ Resources:
             Statement:
               - Effect: Allow
                 Action: "kinesis:*"
+                #arnrewrite
                 Resource: !GetAtt KinesisDataStreamPageClicks.Arn     
               - Effect: Allow
                 Action: "logs:*"
                 Resource: "*"     
               - Effect: Allow
                 Action: "dynamodb:*"
+                #arnrewrite
                 Resource: !GetAtt PageClicksDynamoDBTable.Arn 
       Tags:
           - Key: Vendor
@@ -567,4 +571,8 @@ Metadata:
         Parameters:
           - LogMetricsToS3
           - DataStreamShardsForPageLoads
-          - DataStreamShardsForPageClicks              
+          - DataStreamShardsForPageClicks    
+      - Label:
+          default: "DynamoDB Configuration"
+        Parameters:
+          - LogMetricsToDynamoDB                    
