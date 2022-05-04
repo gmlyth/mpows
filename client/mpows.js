@@ -1,3 +1,9 @@
+/*
+mpows - Metric Pipeline for Online Web Services
+https://github.com/gmlyth/mpows
+Distributed under GNU GENERAL PUBLIC LICENSE
+*/
+
 //If you're recording page loads, replace this with the url for the
 //Lambda function for page loads, after the stack has been created.
 const LAMBDA_FUNCTION_URL_PAGE_LOADS = ""; 

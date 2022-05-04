@@ -1,3 +1,7 @@
+#mpows - Metric Pipeline for Online Web Services
+#https://github.com/gmlyth/mpows
+#Distributed under GNU GENERAL PUBLIC LICENSE
+
 Description: Creates resource stack for mpows.
 
 Parameters:
