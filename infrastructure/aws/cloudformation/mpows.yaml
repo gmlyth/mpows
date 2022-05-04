@@ -148,7 +148,7 @@ Resources:
             Statement:
               - Effect: Allow
                 Action: "s3:*"
-                Resource: "*"               
+                Resource: !GetAtt S3BucketPageLoads.Arn               
 
   KinesisSourcePageLoadsIAMRole:
     Type: AWS::IAM::Role
@@ -175,7 +175,7 @@ Resources:
             Statement:
               - Effect: Allow
                 Action: "kinesis:*"
-                Resource: "*"                           
+                Resource: !GetAtt KinesisDataStreamPageLoads.Arn                           
 
   KinesisFirehosePageLoads:
     Type: AWS::KinesisFirehose::DeliveryStream
@@ -223,7 +223,7 @@ Resources:
             Statement:
               - Effect: Allow
                 Action: "s3:*"
-                Resource: "*"               
+                Resource: !GetAtt S3BucketPageClicks.Arn                
 
   KinesisSourcePageClicksIAMRole:
     Type: AWS::IAM::Role
@@ -250,7 +250,7 @@ Resources:
             Statement:
               - Effect: Allow
                 Action: "kinesis:*"
-                Resource: "*"  
+                Resource:  !GetAtt KinesisDataStreamPageClicks.Arn  
 
   KinesisFirehosePageClicks:
     Type: AWS::KinesisFirehose::DeliveryStream
@@ -292,13 +292,13 @@ Resources:
             Statement:
               - Effect: Allow
                 Action: "kinesis:*"
-                Resource: "*"    
+                Resource: !GetAtt KinesisDataStreamPageLoads.Arn     
               - Effect: Allow
                 Action: "logs:*"
                 Resource: "*"   
               - Effect: Allow
                 Action: "dynamodb:*"
-                Resource: "*"  
+                Resource: !GetAtt PageLoadsDynamoDBTable.Arn  
       Tags:
           - Key: Vendor
             Value: mpows
@@ -410,13 +410,13 @@ Resources:
             Statement:
               - Effect: Allow
                 Action: "kinesis:*"
-                Resource: "*"    
+                Resource: !GetAtt KinesisDataStreamPageClicks.Arn     
               - Effect: Allow
                 Action: "logs:*"
                 Resource: "*"     
               - Effect: Allow
                 Action: "dynamodb:*"
-                Resource: "*"  
+                Resource: !GetAtt PageClicksDynamoDBTable.Arn 
       Tags:
           - Key: Vendor
             Value: mpows
