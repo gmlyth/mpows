@@ -69,12 +69,11 @@ addEvent(window,'load',function () {
             links[i].addEventListener('click', function(e) {
                 var requestUrl = encodeURI(window.location);
 
-                var queryString = `?request_url=${requestUrl}&link_id=${e.currentTarget.id}&link_href=${e.currentTarget.href}&link_title=${e.currentTarget.title}&link_innerHTML=${e.currentTarget.innerHTML}`;
+                var queryString = `?request_url=${requestUrl}&link_id=${e.currentTarget.id}&link_href=${e.currentTarget.href}&link_title=${e.currentTarget.title}&link_text_content=${e.currentTarget.textContent}`;
 
                 var request = new XMLHttpRequest();
                 request.open('GET', LAMBDA_FUNCTION_URL_PAGE_CLICKS + queryString);
                 request.send();
-                //alert(`ID: of link: ${e.currentTarget.id} href of link: ${e.currentTarget.href} title of link: ${e.currentTarget.title} class of link: ${e.currentTarget.className} innerHTML of link: ${e.currentTarget.innerHTML}`);
             });
         }
     }
